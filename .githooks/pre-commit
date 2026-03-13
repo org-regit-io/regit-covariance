@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-commit hook: format + lint gate
+# Install: git config core.hooksPath .githooks
+
+set -e
+
+echo "[pre-commit] Running format check..."
+cargo fmt --check
+
+echo "[pre-commit] Running clippy..."
+cargo clippy -- -D warnings
+
+echo "[pre-commit] All checks passed."

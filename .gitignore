@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+vendor/
+.venv/
+__pycache__/
+
+# Build output
+/target/
+dist/
+build/
+out/
+*.o
+*.so
+*.dylib
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Internal docs, methodology, planning (all in /doc/)
+/doc/
+
+# Claude
+CLAUDE.md
+.claude/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+.nyc_output/

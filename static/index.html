@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>regit-covariance — Covariance Denoising Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #7b68ee;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        .page-content {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 24px;
+            padding: 0.75rem 1.25rem;
+            overflow-y: auto;
+        }
+        header {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.4rem;
+            flex-shrink: 0;
+        }
+        header h1 { font-size: 1.2rem; font-weight: 600; }
+        header .subtitle { color: var(--text-muted); font-size: 0.8rem; }
+
+        /* ── Dashboard grid ─────────────────────────────────────── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+        .col-left { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; min-height: 0; justify-content: flex-start; }
+        .col-right { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; min-height: 0; overflow: hidden; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            flex-shrink: 1;
+        }
+        .card h2 {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        .card.full { grid-column: 1 / -1; }
+
+        /* ── Mode tabs ──────────────────────────────────────────── */
+        .mode-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0.4rem;
+            flex-shrink: 0;
+        }
+        .mode-tab {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.4rem 1rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .mode-tab:first-child { border-radius: 6px 0 0 6px; }
+        .mode-tab:last-child { border-radius: 0 6px 6px 0; }
+        .mode-tab.active {
+            background: linear-gradient(135deg, #5882ff, #9b64ff);
+            color: #fff;
+            border-color: #7b68ee;
+        }
+
+        /* ── Controls ───────────────────────────────────────────── */
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-bottom: 0.4rem;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 0.15rem; }
+        .control-group.grow { flex: 1; min-width: 200px; }
+        .controls label { color: var(--text-muted); font-size: 0.7rem; line-height: 1; white-space: nowrap; }
+        .controls input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            height: 32px;
+        }
+        .controls input.narrow { width: 68px; }
+        button {
+            background: linear-gradient(135deg, #5882ff, #9b64ff);
+            color: #fff;
+            border: none;
+            height: 32px;
+            padding: 0 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        button:hover { opacity: 0.85; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button.secondary {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        button.secondary:hover { color: var(--text); border-color: var(--text-muted); }
+
+        /* ── Inline status ──────────────────────────────────────── */
+        .status-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            min-height: 0.8rem;
+            flex-shrink: 0;
+        }
+        .status-inline .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .status-inline .dot.active { background: var(--green); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* ── Metrics ────────────────────────────────────────────── */
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .metric:last-child { border-bottom: none; }
+        .metric .label { color: var(--text-muted); font-size: 0.7rem; }
+        .metric .value { font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.75rem; }
+        .flag {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .flag.green { background: rgba(63,185,80,0.15); color: var(--green); }
+        .flag.yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+        .flag.red { background: rgba(248,81,73,0.15); color: var(--red); }
+
+        /* ── Chart ──────────────────────────────────────────────── */
+        .chart-container { position: relative; flex: 1; min-height: 80px; min-width: 0; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .hint { color: var(--text-muted); font-size: 0.7rem; }
+        .resolved { color: var(--green); font-size: 0.7rem; }
+        .hidden { display: none !important; }
+
+        /* ── Heatmap ────────────────────────────────────────────── */
+        .heatmap-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+        .heatmap-header h2 { margin-bottom: 0; }
+        .heatmap-legend-bar { display: flex; align-items: center; gap: 0.4rem; }
+        .heatmap-legend-bar canvas { border-radius: 2px; }
+        .heatmap-legend-bar span { font-size: 0.6rem; color: var(--text-muted); }
+        .heatmap-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; min-width: 0; }
+        .heatmap-block { text-align: center; min-width: 0; overflow: hidden; }
+        .heatmap-block h3 { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .heatmap-canvas { border-radius: 4px; image-rendering: pixelated; display: block; }
+
+        /* ── SRI gauge ──────────────────────────────────────────── */
+        .sri-compare { display: flex; gap: 1.5rem; justify-content: center; align-items: center; padding: 0.4rem 0; }
+        .sri-block { text-align: center; }
+        .sri-block .sri-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem; }
+        .sri-block .sri-value { font-size: 1.6rem; font-weight: 700; }
+        .sri-block .sri-value.prescribed { color: var(--text-muted); }
+        .sri-block .sri-value.kernel { background: linear-gradient(135deg, #5882ff, #9b64ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+        .sri-arrow { font-size: 1.2rem; color: var(--text-muted); }
+        .sri-scale { display: flex; gap: 2px; margin-top: 0.5rem; justify-content: center; }
+        .sri-pip { width: 28px; height: 5px; border-radius: 3px; background: var(--border); transition: background 0.3s; }
+
+        /* ── Per-asset SRI table ───────────────────────────────── */
+        .per-asset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 2px;
+        }
+        .per-asset-cell {
+            text-align: center;
+            padding: 0.2rem 0.15rem;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.03);
+            font-size: 0.65rem;
+            line-height: 1.3;
+        }
+        .per-asset-cell .pa-ticker { color: var(--text-muted); font-size: 0.6rem; }
+        .per-asset-cell .pa-sri { font-weight: 700; font-size: 0.8rem; }
+
+        /* ── SRI card: content-sized, no stretch ── */
+        #sriCard { flex: 0 0 auto; }
+
+        /* ── Compact metric rows for MP + Condition side by side ─ */
+        .metrics-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; flex-shrink: 0; }
+        .metrics-row .card { padding: 0.5rem 0.6rem; }
+        .metrics-row .card h2 { font-size: 0.6rem; margin-bottom: 0.25rem; }
+        .metrics-row .metric { padding: 0.12rem 0; }
+        .metrics-row .metric .label { font-size: 0.65rem; }
+        .metrics-row .metric .value { font-size: 0.7rem; }
+
+        /* ── Eigenvalue card: compact, in right column ── */
+        #eigenCard { flex: 0 0 auto; display: flex; flex-direction: column; min-height: 0; }
+        #eigenCard h2 { flex-shrink: 0; }
+        #eigenCard .chart-container { max-height: 200px; }
+
+        /* ── Heatmap card: content-sized, width-driven square heatmaps ── */
+        #heatmapCard { flex: 0 0 auto; }
+        .heatmap-block { text-align: center; }
+        .heatmap-canvas { width: 100%; cursor: crosshair; }
+        .heatmap-tooltip {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+            pointer-events: none;
+            z-index: 100;
+            white-space: nowrap;
+            display: none;
+        }
+
+        /* ── Footer ─────────────────────────────────────────────── */
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            padding: 0 1.25rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            line-height: 24px;
+            background: var(--bg);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-content">
+        <header>
+            <h1>regit-covariance</h1>
+            <span class="subtitle">Covariance matrix denoising &amp; risk validation</span>
+        </header>
+
+        <div class="mode-tabs">
+            <div class="mode-tab active" onclick="setMode('live')">Live Data</div>
+            <div class="mode-tab" onclick="setMode('synthetic')">Synthetic</div>
+        </div>
+
+        <!-- Live mode controls -->
+        <div class="controls" id="liveControls">
+            <div class="control-group grow">
+                <label>ISIN or Tickers</label>
+                <input type="text" id="tickers" value="AAPL,MSFT,GOOGL,AMZN,META,NVDA,TSLA,JPM,V,JNJ" placeholder="LU0599612842 or AAPL,MSFT,..." style="width:100%;">
+            </div>
+            <div class="control-group">
+                <label>Resolve</label>
+                <button class="secondary" onclick="resolveInput()">ISIN</button>
+            </div>
+            <div class="control-group">
+                <label>Period (years)</label>
+                <input type="number" id="periodYears" class="narrow" value="3" min="1" max="10" step="1">
+            </div>
+            <div class="control-group">
+                <label>KID SRI</label>
+                <input type="text" id="prescribedSri" class="narrow" value="" placeholder="3 or 2,3,4" style="width:80px;">
+            </div>
+            <div class="control-group">
+                <label>Pipeline</label>
+                <button id="runBtnLive" onclick="runComputation()">Run</button>
+            </div>
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button class="secondary" onclick="resetAllMetrics(); setStatus('Ready.', false);">Reset</button>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.25rem;flex-shrink:0;" id="infoRow">
+            <span class="hint" id="resolveHint"></span>
+            <div class="status-inline" id="statusBar">
+                <span class="dot" id="statusDot"></span>
+                <span id="statusText">Ready.</span>
+            </div>
+        </div>
+
+        <!-- Synthetic mode controls -->
+        <div class="controls hidden" id="syntheticControls">
+            <div class="control-group">
+                <label>Assets (N)</label>
+                <input type="number" id="numAssets" class="narrow" value="50" min="3" max="500">
+            </div>
+            <div class="control-group">
+                <label>Observations (T)</label>
+                <input type="number" id="numObs" class="narrow" value="252" min="10" max="2000">
+            </div>
+            <div class="control-group">
+                <label>Seed</label>
+                <input type="number" id="seed" class="narrow" value="42" min="1">
+            </div>
+            <div class="control-group">
+                <label>Pipeline</label>
+                <button id="runBtnSynthetic" onclick="runComputation()">Run</button>
+            </div>
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button class="secondary" onclick="resetAllMetrics(); setStatus('Ready.', false);">Reset</button>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- LEFT COLUMN: SRI + metrics -->
+            <div class="col-left">
+                <div class="card" id="sriCard">
+                    <h2 id="sriTitle">SRI Comparison</h2>
+                    <div class="sri-compare" id="sriCompare">
+                        <div class="sri-block">
+                            <div class="sri-label" id="sriLabelLeft">Prescribed (KID)</div>
+                            <div class="sri-value prescribed" id="sriPrescribed">&mdash;</div>
+                        </div>
+                        <div class="sri-arrow" id="sriArrow"></div>
+                        <div class="sri-block">
+                            <div class="sri-label" id="sriLabelRight">Kernel (calculated)</div>
+                            <div class="sri-value kernel" id="sriKernel">&mdash;</div>
+                        </div>
+                    </div>
+                    <div class="sri-scale" id="sriScale"></div>
+                    <div style="text-align:center;margin-top:0.25rem;" id="sriDivergence"></div>
+                    <div style="margin-top:0.5rem;">
+                        <div class="metric"><span class="label">VaR (parametric, 97.5%)</span><span class="value" id="riskVarParam">&mdash;</span></div>
+                        <div class="metric"><span class="label">VaR (Cornish-Fisher)</span><span class="value" id="riskVarCF">&mdash;</span></div>
+                        <div class="metric"><span class="label">Annual volatility</span><span class="value" id="riskVol">&mdash;</span></div>
+                        <div class="metric"><span class="label">Skewness / Excess kurtosis</span><span class="value" id="riskSkewKurt">&mdash;</span></div>
+                    </div>
+                    <div id="sriNote" style="font-size:0.6rem;color:var(--text-muted);text-align:center;margin-top:0.3rem;"></div>
+                    <div id="perAssetSri" class="hidden" style="margin-top:0.5rem;"></div>
+                </div>
+
+                <div class="metrics-row" id="metricsRow">
+                    <div class="card" id="mpCard">
+                        <h2>Marchenko-Pastur Fit</h2>
+                        <div class="metric"><span class="label">&#963;&#178;</span><span class="value" id="mpSigma">&mdash;</span></div>
+                        <div class="metric"><span class="label">&#955;&#8330;</span><span class="value" id="mpLambdaPlus">&mdash;</span></div>
+                        <div class="metric"><span class="label">&#955;&#8331;</span><span class="value" id="mpLambdaMinus">&mdash;</span></div>
+                        <div class="metric"><span class="label">Signal</span><span class="value" id="mpSignal">&mdash;</span></div>
+                        <div class="metric"><span class="label">Noise</span><span class="value" id="mpNoise">&mdash;</span></div>
+                    </div>
+
+                    <div class="card" id="condCard">
+                        <h2>Condition Number</h2>
+                        <div class="metric"><span class="label">Before</span><span class="value" id="condBefore">&mdash;</span></div>
+                        <div class="metric"><span class="label">After</span><span class="value" id="condAfter">&mdash;</span></div>
+                        <div class="metric"><span class="label">Improvement</span><span class="value" id="condImprovement">&mdash;</span></div>
+                        <div class="metric"><span class="label">Health</span><span class="value" id="condHealth">&mdash;</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: eigenvalue chart + heatmaps -->
+            <div class="col-right" id="heatmapCol">
+                <div class="card" id="eigenCard">
+                    <h2>Eigenvalue Spectrum</h2>
+                    <div class="chart-container" id="eigenChartWrap">
+                        <canvas id="eigenChart"></canvas>
+                    </div>
+                </div>
+                <div class="card" id="heatmapCard">
+                    <div class="heatmap-header">
+                        <h2>Correlation Matrix</h2>
+                        <div class="heatmap-legend-bar hidden" id="heatmapLegendWrap">
+                            <span>-1</span>
+                            <canvas id="heatmapLegend" width="1" height="1"></canvas>
+                            <span>+1</span>
+                        </div>
+                    </div>
+                    <div class="heatmap-pair">
+                        <div class="heatmap-block">
+                            <h3>Raw</h3>
+                            <canvas id="heatmapRaw" class="heatmap-canvas" width="1" height="1"></canvas>
+                        </div>
+                        <div class="heatmap-block">
+                            <h3>Denoised</h3>
+                            <canvas id="heatmapDenoised" class="heatmap-canvas" width="1" height="1"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <a href="https://www.regit.io">Regit.io</a> &mdash; The Operating System for Investment Products. From Luxembourg.
+        &nbsp;&middot;&nbsp; Market data by Yahoo Finance for educational purposes only.
+    </footer>
+
+    <div class="heatmap-tooltip" id="heatmapTooltip"></div>
+
+    <script>
+        let eigenChart = null;
+        let currentMode = 'live';
+        let heatmapData = { raw: null, denoised: null, n: 0, tickers: [] };
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', (i === 0 && mode === 'live') || (i === 1 && mode === 'synthetic'));
+            });
+            document.getElementById('liveControls').classList.toggle('hidden', mode !== 'live');
+            document.getElementById('resolveHint').classList.toggle('hidden', mode !== 'live');
+            document.getElementById('syntheticControls').classList.toggle('hidden', mode !== 'synthetic');
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('eigenChart').getContext('2d');
+            eigenChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Raw',
+                            data: [],
+                            borderColor: 'rgba(88,130,255,1)',
+                            backgroundColor: 'rgba(88,130,255,0.15)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 4,
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Denoised',
+                            data: [],
+                            borderColor: 'rgba(155,100,255,1)',
+                            backgroundColor: 'rgba(155,100,255,0.15)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 4,
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'MP bound (\u03bb\u208a)',
+                            data: [],
+                            borderColor: 'rgba(248,81,73,0.7)',
+                            backgroundColor: 'transparent',
+                            borderDash: [6, 3],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { labels: { color: '#8b949e', usePointStyle: true, boxWidth: 8, font: { size: 10 } } },
+                        tooltip: { backgroundColor: '#161b22', borderColor: '#30363d', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#8b949e' }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Index', color: '#8b949e', font: { size: 9 } },
+                            ticks: { color: '#8b949e', font: { size: 8 } },
+                            grid: { color: 'rgba(48,54,61,0.3)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Eigenvalue', color: '#8b949e', font: { size: 9 } },
+                            ticks: { color: '#8b949e', font: { size: 8 } },
+                            grid: { color: 'rgba(48,54,61,0.3)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function setStatus(msg, active) {
+            document.getElementById('statusText').textContent = msg;
+            document.getElementById('statusDot').className = active ? 'dot active' : 'dot';
+        }
+
+        function fmt(v, decimals = 4) {
+            if (typeof v !== 'number') return '\u2014';
+            return v.toFixed(decimals);
+        }
+
+        // ── Heatmap rendering ──────────────────────────────────────
+        function corrColor(v) {
+            const t = (v + 1) / 2;
+            if (t < 0.5) {
+                const s = t * 2;
+                return [Math.round(20 + s * 8), Math.round(60 + s * (17 - 60)), Math.round(180 - s * 140)];
+            }
+            const s = (t - 0.5) * 2;
+            return [Math.round(28 + s * 127), Math.round(17 + s * 83), Math.round(40 + s * 215)];
+        }
+
+        function drawHeatmap(canvasId, flatData, n) {
+            const canvas = document.getElementById(canvasId);
+            canvas.width = n;
+            canvas.height = n;
+            // Let CSS handle display size (width:100%, aspect-ratio:1)
+            const ctx = canvas.getContext('2d');
+            const img = ctx.createImageData(n, n);
+            for (let col = 0; col < n; col++) {
+                for (let row = 0; row < n; row++) {
+                    const v = flatData[col * n + row];
+                    const [r, g, b] = corrColor(v);
+                    const idx = (row * n + col) * 4;
+                    img.data[idx] = r;
+                    img.data[idx + 1] = g;
+                    img.data[idx + 2] = b;
+                    img.data[idx + 3] = 255;
+                }
+            }
+            ctx.putImageData(img, 0, 0);
+        }
+
+        function drawLegend() {
+            const canvas = document.getElementById('heatmapLegend');
+            canvas.width = 120;
+            canvas.height = 8;
+            canvas.style.width = '120px';
+            canvas.style.height = '8px';
+            const ctx = canvas.getContext('2d');
+            for (let x = 0; x < 120; x++) {
+                const v = -1 + (x / 119) * 2; // -1 at left, +1 at right
+                const [r, g, b] = corrColor(v);
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(x, 0, 1, 8);
+            }
+        }
+
+        // ── SRI gauge ──────────────────────────────────────────────
+        function updateSriGauge(prescribed, kernel, flag) {
+            // Determine context: single KID SRI vs per-asset list vs none
+            const hasSingleKid = kidSriList.length === 1;
+            const hasPerAssetKid = kidSriList.length > 1;
+            const hasAnyKid = hasSingleKid || hasPerAssetKid;
+
+            document.getElementById('sriPrescribed').textContent = prescribed;
+            document.getElementById('sriKernel').textContent = kernel;
+            if (hasSingleKid) {
+                document.getElementById('sriLabelLeft').textContent = 'Prescribed (KID)';
+            } else if (hasPerAssetKid) {
+                document.getElementById('sriLabelLeft').textContent = 'Prescribed (raw)';
+            } else {
+                document.getElementById('sriLabelLeft').textContent = 'Prescribed (raw)';
+            }
+            document.getElementById('sriLabelRight').textContent = 'Kernel (denoised)';
+
+            const arrow = prescribed === kernel ? '=' : (kernel > prescribed ? '\u2197' : '\u2198');
+            document.getElementById('sriArrow').textContent = arrow;
+
+            // SRI scale pips
+            const scale = document.getElementById('sriScale');
+            scale.innerHTML = '';
+            const colors = ['#3fb950','#3fb950','#d29922','#d29922','#f85149','#f85149','#f85149'];
+            for (let i = 1; i <= 7; i++) {
+                const pip = document.createElement('div');
+                pip.className = 'sri-pip';
+                if (i === kernel) pip.style.background = colors[i-1];
+                if (i === prescribed) pip.style.border = '1px solid var(--text)';
+                scale.appendChild(pip);
+            }
+
+            // Divergence flag with legend
+            const divEl = document.getElementById('sriDivergence');
+            const flagLabel = flag === 'green' ? 'Match' : flag === 'yellow' ? 'Off by 1' : 'Material divergence';
+            divEl.innerHTML = `<span class="flag ${flag}">${flag}</span> <span style="font-size:0.6rem;color:var(--text-muted);">${flagLabel}</span>`;
+
+            // Equal-weight note when no explicit weights provided
+            const noteEl = document.getElementById('sriNote');
+            if (noteEl) noteEl.textContent = 'Equal-weight portfolio assumed (no weights provided)';
+        }
+
+        // ── ISIN resolve ───────────────────────────────────────────
+        async function resolveInput() {
+            const input = document.getElementById('tickers').value.trim();
+            const hint = document.getElementById('resolveHint');
+            const isinPattern = /^[A-Z]{2}[A-Z0-9]{10}$/;
+            if (!isinPattern.test(input)) {
+                hint.textContent = 'Not an ISIN format. Use as tickers directly.';
+                hint.className = 'hint';
+                return;
+            }
+            hint.textContent = 'Resolving ISIN...';
+            hint.className = 'hint';
+            try {
+                const resp = await fetch(`/api/resolve-isin/${input}`);
+                const data = await resp.json();
+                if (data.ticker) {
+                    document.getElementById('tickers').value = data.ticker;
+                    hint.textContent = `Resolved ${input} \u2192 ${data.ticker}`;
+                    hint.className = 'resolved';
+                } else {
+                    hint.textContent = `Could not resolve: ${data.error || 'unknown'}`;
+                    hint.className = 'hint';
+                }
+            } catch (e) {
+                hint.textContent = 'Resolution failed: ' + e.message;
+                hint.className = 'hint';
+            }
+        }
+
+        let kidSriList = []; // per-asset KID SRIs for discrepancy coloring
+
+        function buildRequest() {
+            if (currentMode === 'live') {
+                const tickersRaw = document.getElementById('tickers').value.trim();
+                const tickers = tickersRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+                const periodYears = parseInt(document.getElementById('periodYears').value) || 3;
+                const periodDays = periodYears * 365;
+                const sriInput = document.getElementById('prescribedSri').value.trim();
+                const body = { tickers, period_days: periodDays };
+                // Parse KID SRI: single value or comma-separated list
+                kidSriList = sriInput.split(',').map(s => parseInt(s.trim())).filter(v => v >= 1 && v <= 7);
+                if (kidSriList.length === 1) {
+                    // Single KID SRI: use as portfolio-level prescribed SRI
+                    body.prescribed_sri = kidSriList[0];
+                }
+                // Multiple KID SRIs: per-asset only, let backend compute prescribed from raw covariance
+                return body;
+            }
+            return {
+                num_assets: parseInt(document.getElementById('numAssets').value),
+                num_observations: parseInt(document.getElementById('numObs').value),
+                seed: parseInt(document.getElementById('seed').value),
+            };
+        }
+
+        // Cards/columns that only make sense for multi-asset portfolios.
+        const multiAssetIds = ['eigenCard', 'heatmapCol', 'mpCard', 'condCard', 'metricsRow'];
+
+        function setSingleAssetLayout(single) {
+            multiAssetIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', single);
+            });
+            // In single-asset mode, SRI card spans full width
+            document.getElementById('sriCard').classList.toggle('full', single);
+            // Switch dashboard to single column for single asset
+            document.querySelector('.dashboard').style.gridTemplateColumns = single ? '1fr' : '1fr 1fr';
+        }
+
+        function resetAllMetrics() {
+            const dash = '\u2014';
+            ['mpSigma','mpLambdaPlus','mpLambdaMinus','mpSignal','mpNoise'].forEach(id => document.getElementById(id).textContent = dash);
+            ['condBefore','condAfter','condImprovement','condHealth'].forEach(id => document.getElementById(id).textContent = dash);
+            ['riskVarParam','riskVarCF','riskVol','riskSkewKurt'].forEach(id => document.getElementById(id).textContent = dash);
+            document.getElementById('sriPrescribed').innerHTML = dash;
+            document.getElementById('sriKernel').innerHTML = dash;
+            document.getElementById('sriArrow').textContent = '';
+            document.getElementById('sriScale').innerHTML = '';
+            document.getElementById('sriDivergence').innerHTML = '';
+            if (eigenChart) {
+                eigenChart.data.labels = [];
+                eigenChart.data.datasets.forEach(ds => ds.data = []);
+                eigenChart.update();
+            }
+            setSingleAssetLayout(false);
+            ['heatmapRaw','heatmapDenoised'].forEach(id => {
+                const c = document.getElementById(id);
+                c.width = 1; c.height = 1;
+            });
+            document.getElementById('perAssetSri').classList.add('hidden');
+            document.getElementById('perAssetSri').innerHTML = '';
+            document.getElementById('heatmapLegendWrap').classList.add('hidden');
+        }
+
+        async function runComputation() {
+            const btn = currentMode === 'live' ? document.getElementById('runBtnLive') : document.getElementById('runBtnSynthetic');
+            btn.disabled = true;
+            resetAllMetrics();
+
+            const body = buildRequest();
+            setStatus('Starting computation...', true);
+
+            let resp;
+            try {
+                resp = await fetch('/api/compute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            } catch (e) {
+                setStatus('Error: ' + e.message, false);
+                btn.disabled = false;
+                return;
+            }
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                setStatus('Error: ' + (err.error || 'computation failed'), false);
+                btn.disabled = false;
+                return;
+            }
+
+            const result = await resp.json();
+            const compId = result.id;
+
+            setSingleAssetLayout(result.num_assets <= 1);
+
+            const evtSource = new EventSource(`/api/stream/${compId}`);
+
+            evtSource.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                setStatus(`[${data.stage}/${data.total_stages}] ${data.message}`, true);
+            });
+
+            evtSource.addEventListener('eigenvalues_raw', (e) => {
+                const data = JSON.parse(e.data);
+                const isSingle = data.num_assets <= 1;
+                setSingleAssetLayout(isSingle);
+                if (!isSingle) {
+                    eigenChart.data.labels = data.eigenvalues.map((_, i) => i + 1);
+                    eigenChart.data.datasets[0].data = data.eigenvalues;
+                    eigenChart.data.datasets[1].data = [];
+                    eigenChart.data.datasets[2].data = [];
+                    eigenChart.update();
+                }
+                if (data.currencies && data.currencies.length > 0) {
+                    const unique = [...new Set(data.currencies)];
+                    const note = unique.length === 1 ? `Prices in ${unique[0]}` : `Currencies: ${unique.join(', ')}`;
+                    setStatus(`[2/7] ${data.num_assets} assets, ${data.num_observations} obs \u2014 ${note}`, true);
+                }
+            });
+
+            evtSource.addEventListener('mp_fit', (e) => {
+                const data = JSON.parse(e.data);
+                document.getElementById('mpSigma').textContent = fmt(data.sigma_sq);
+                document.getElementById('mpLambdaPlus').textContent = fmt(data.lambda_plus);
+                document.getElementById('mpLambdaMinus').textContent = fmt(data.lambda_minus);
+                document.getElementById('mpSignal').textContent = data.signal_count;
+                document.getElementById('mpNoise').textContent = data.noise_count;
+                const n = eigenChart.data.labels.length;
+                eigenChart.data.datasets[2].data = Array(n).fill(data.lambda_plus);
+                eigenChart.update();
+            });
+
+            evtSource.addEventListener('eigenvalues_denoised', (e) => {
+                const data = JSON.parse(e.data);
+                eigenChart.data.datasets[1].data = data.eigenvalues;
+                eigenChart.update();
+                if (data.corr_raw && data.n > 1) {
+                    heatmapData = { raw: data.corr_raw, denoised: data.corr_denoised, n: data.n, tickers: data.tickers || [] };
+                    drawHeatmap('heatmapRaw', data.corr_raw, data.n);
+                    drawHeatmap('heatmapDenoised', data.corr_denoised, data.n);
+                    document.getElementById('heatmapLegendWrap').classList.remove('hidden');
+                    drawLegend();
+                }
+            });
+
+            evtSource.addEventListener('condition_number', (e) => {
+                const data = JSON.parse(e.data);
+                document.getElementById('condBefore').textContent = fmt(data.before, 1);
+                document.getElementById('condAfter').textContent = fmt(data.after, 1);
+                document.getElementById('condImprovement').textContent = fmt(data.improvement_factor, 2) + 'x';
+                document.getElementById('condHealth').textContent = data.health;
+            });
+
+            evtSource.addEventListener('risk_metrics', (e) => {
+                const data = JSON.parse(e.data);
+                document.getElementById('riskVarParam').textContent = fmt(data.var_parametric);
+                document.getElementById('riskVarCF').textContent = fmt(data.var_cornish_fisher);
+                document.getElementById('riskVol').textContent = (data.portfolio_volatility * 100).toFixed(2) + '%';
+                const sk = typeof data.skewness === 'number' ? data.skewness.toFixed(3) : '\u2014';
+                const ek = typeof data.excess_kurtosis === 'number' ? data.excess_kurtosis.toFixed(3) : '\u2014';
+                document.getElementById('riskSkewKurt').textContent = `${sk} / ${ek}`;
+                updateSriGauge(data.prescribed_sri, data.kernel_sri, data.divergence_flag);
+                renderPerAssetSri(data.per_asset || []);
+            });
+
+            evtSource.addEventListener('complete', () => {
+                setStatus('Pipeline complete.', false);
+                evtSource.close();
+                btn.disabled = false;
+            });
+
+            evtSource.onerror = () => {
+                setStatus('Stream ended.', false);
+                evtSource.close();
+                btn.disabled = false;
+            };
+        }
+
+        // ── Per-asset SRI ─────────────────────────────────────────
+        function renderPerAssetSri(assets) {
+            const wrap = document.getElementById('perAssetSri');
+            if (!assets || assets.length <= 1) { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
+            const hasPerAssetKid = kidSriList.length === assets.length;
+            let legendHtml = '';
+            if (hasPerAssetKid) {
+                legendHtml = '<span style="font-size:0.55rem;color:var(--text-muted);margin-left:0.5rem;">' +
+                    '<span style="color:var(--green);">&#9679;</span> match ' +
+                    '<span style="color:var(--yellow);">&#9679;</span> off by 1 ' +
+                    '<span style="color:var(--red);">&#9679;</span> off by 2+</span>';
+            }
+            let html = '<div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;">Per-Asset SRI' + (hasPerAssetKid ? ' vs KID' : '') + legendHtml + '</div><div class="per-asset-grid">';
+            for (let i = 0; i < assets.length; i++) {
+                const a = assets[i];
+                let color, label;
+                if (hasPerAssetKid) {
+                    const kid = kidSriList[i];
+                    const diff = Math.abs(a.sri - kid);
+                    color = diff === 0 ? 'var(--green)' : diff === 1 ? 'var(--yellow)' : 'var(--red)';
+                    label = `KID:${kid}`;
+                } else {
+                    const riskColors = { 1: 'var(--green)', 2: 'var(--green)', 3: 'var(--yellow)', 4: 'var(--yellow)', 5: 'var(--red)', 6: 'var(--red)', 7: 'var(--red)' };
+                    color = riskColors[a.sri] || 'var(--text)';
+                    label = (a.volatility * 100).toFixed(1) + '%';
+                }
+                html += `<div class="per-asset-cell"><div class="pa-ticker">${a.ticker}</div><div class="pa-sri" style="color:${color}">${a.sri}</div><div class="pa-ticker">${label}</div></div>`;
+            }
+            html += '</div>';
+            wrap.innerHTML = html;
+            wrap.classList.remove('hidden');
+        }
+
+        // ── Heatmap tooltip ───────────────────────────────────────
+        function setupHeatmapTooltip(canvasId, dataKey) {
+            const canvas = document.getElementById(canvasId);
+            const tooltip = document.getElementById('heatmapTooltip');
+
+            canvas.addEventListener('mousemove', (e) => {
+                const flatData = heatmapData[dataKey];
+                const n = heatmapData.n;
+                if (!flatData || n < 2) { tooltip.style.display = 'none'; return; }
+
+                // Account for object-fit: contain — image is centered within element.
+                const rect = canvas.getBoundingClientRect();
+                const scale = Math.min(rect.width / n, rect.height / n);
+                const imgW = n * scale, imgH = n * scale;
+                const offX = (rect.width - imgW) / 2;
+                const offY = (rect.height - imgH) / 2;
+                const x = e.clientX - rect.left - offX;
+                const y = e.clientY - rect.top - offY;
+
+                if (x < 0 || y < 0 || x >= imgW || y >= imgH) { tooltip.style.display = 'none'; return; }
+
+                const col = Math.floor(x / imgW * n);
+                const row = Math.floor(y / imgH * n);
+
+                if (row < 0 || row >= n || col < 0 || col >= n) { tooltip.style.display = 'none'; return; }
+
+                const val = flatData[col * n + row];
+                const tickers = heatmapData.tickers;
+                const rowLabel = tickers[row] || row;
+                const colLabel = tickers[col] || col;
+                tooltip.textContent = `${rowLabel} / ${colLabel}: ${val.toFixed(3)}`;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 12) + 'px';
+                tooltip.style.top = (e.clientY - 8) + 'px';
+            });
+
+            canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+        }
+
+        setupHeatmapTooltip('heatmapRaw', 'raw');
+        setupHeatmapTooltip('heatmapDenoised', 'denoised');
+
+        initChart();
+    </script>
+</body>
+</html>
