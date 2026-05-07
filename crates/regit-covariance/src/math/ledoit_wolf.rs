@@ -271,11 +271,12 @@ mod tests {
         let cov = correlation_matrix(&returns).unwrap();
         // Standardize returns for linear shrinkage.
         let (num_obs, num_assets) = returns.shape();
+        let num_obs_f = f64::from(u32::try_from(num_obs).expect("num_obs fits in u32"));
         let mut standardized = returns.clone();
         for col in 0..num_assets {
             let column = returns.column(col);
             let mean = column.mean();
-            let var = column.iter().map(|&val| (val - mean).powi(2)).sum::<f64>() / num_obs as f64;
+            let var = column.iter().map(|&val| (val - mean).powi(2)).sum::<f64>() / num_obs_f;
             let std = var.sqrt();
             for row in 0..num_obs {
                 standardized[(row, col)] = (standardized[(row, col)] - mean) / std;

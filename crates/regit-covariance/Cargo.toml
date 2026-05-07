@@ -1,0 +1,30 @@
+[package]
+name = "regit-covariance"
+description = "Covariance matrix denoising for financial risk validation. Marchenko-Pastur filtering, Ledoit-Wolf shrinkage, detoning. Pure math, no I/O."
+keywords = ["covariance", "marchenko-pastur", "risk", "finance", "denoising"]
+categories = ["mathematics", "science", "finance"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+nalgebra = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+proptest = { workspace = true }
+approx = { workspace = true }
+
+[[bench]]
+name = "eigendecompose"
+harness = false

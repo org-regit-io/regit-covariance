@@ -249,7 +249,7 @@ mod tests {
         let sigma_sq = 1.0;
         let q = 2.0;
         let (lambda_minus, lambda_plus) = mp_bounds(sigma_sq, q);
-        let mid = (lambda_minus + lambda_plus) / 2.0;
+        let mid = f64::midpoint(lambda_minus, lambda_plus);
 
         let density = mp_density(mid, sigma_sq, q);
         assert!(density > 0.0, "density at midpoint should be positive");
@@ -263,10 +263,10 @@ mod tests {
         let (lambda_minus, lambda_plus) = mp_bounds(sigma_sq, q);
 
         let steps = 10_000;
-        let dl = (lambda_plus - lambda_minus) / steps as f64;
+        let dl = (lambda_plus - lambda_minus) / f64::from(steps);
         let integral: f64 = (0..steps)
             .map(|step| {
-                let lambda = lambda_minus + (step as f64 + 0.5) * dl;
+                let lambda = lambda_minus + (f64::from(step) + 0.5) * dl;
                 mp_density(lambda, sigma_sq, q) * dl
             })
             .sum();

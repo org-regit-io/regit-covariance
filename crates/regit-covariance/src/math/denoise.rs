@@ -285,9 +285,11 @@ mod tests {
 
         // Deterministic pseudo-random via simple LCG.
         let mut seed: u64 = 42;
+        let denom = f64::from(1u32 << 31);
         for val in &mut data {
             seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
-            *val = ((seed >> 33) as f64 / (1u64 << 31) as f64) - 0.5;
+            let bits = u32::try_from(seed >> 33).expect("31-bit value after right shift");
+            *val = f64::from(bits) / denom - 0.5;
         }
 
         let returns = DMatrix::from_row_slice(num_obs, num_assets, &data);
@@ -337,8 +339,7 @@ mod tests {
         for idx in 1..result.eigenvalues.len() {
             assert!(
                 result.eigenvalues[idx - 1] >= result.eigenvalues[idx] - 1e-10,
-                "eigenvalues not sorted at index {}",
-                idx
+                "eigenvalues not sorted at index {idx}"
             );
         }
     }

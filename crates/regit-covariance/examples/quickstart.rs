@@ -59,7 +59,8 @@ fn main() {
     );
 
     // 7. Parametric VaR (equal-weight portfolio, annualized).
-    let weights = DVector::from_element(num_assets, 1.0 / num_assets as f64);
+    let n_f = f64::from(u32::try_from(num_assets).expect("num_assets fits in u32"));
+    let weights = DVector::from_element(num_assets, 1.0 / n_f);
     let mu = DVector::zeros(num_assets);
     let mut cov_annual = regit_covariance::math::sample_covariance::covariance_from_correlation(
         &denoised.matrix,
@@ -78,12 +79,13 @@ fn main() {
 /// Deterministic synthetic returns for demonstration.
 fn synthetic_returns(t: usize, n: usize) -> DMatrix<f64> {
     let mut state: u64 = 42;
+    let denom = f64::from(1u32 << 31);
     let mut next = || -> f64 {
         state = state
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
-        let u = (state >> 11) as f64 / (1u64 << 53) as f64;
-        (u - 0.5) * 0.04 // daily-scale returns
+        let bits = u32::try_from(state >> 33).expect("31-bit value after right shift");
+        (f64::from(bits) / denom - 0.5) * 0.04 // daily-scale returns
     };
 
     DMatrix::from_fn(t, n, |_, _| next())

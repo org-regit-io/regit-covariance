@@ -26,16 +26,34 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Format
-        run: cargo fmt --check
+        run: cargo fmt --all --check
 
-      - name: Clippy
-        run: cargo clippy -- -D warnings
+      - name: Clippy (workspace, all targets)
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Test
-        run: cargo test
+      - name: Test (workspace)
+        run: cargo test --workspace
 
-      - name: Doc
-        run: cargo doc --no-deps
+      - name: Doc (workspace)
+        run: cargo doc --workspace --no-deps
 
       - name: Deny
         uses: EmbarkStudios/cargo-deny-action@v2
+
+  wasm:
+    name: WASM build (core only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build regit-covariance for wasm32-unknown-unknown
+        run: cargo build -p regit-covariance --target wasm32-unknown-unknown --release
+
+      - name: Report artefact size
+        run: ls -lh target/wasm32-unknown-unknown/release/ | grep -E '\.(rlib|wasm)' || true

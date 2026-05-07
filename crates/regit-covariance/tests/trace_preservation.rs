@@ -18,11 +18,13 @@ use regit_covariance::math::sample_covariance::correlation_matrix;
 fn synthetic_returns(num_obs: usize, num_assets: usize, seed: u64) -> DMatrix<f64> {
     let mut data = vec![0.0_f64; num_obs * num_assets];
     let mut state = seed;
+    let denom = f64::from(1u32 << 31);
     for val in &mut data {
         state = state
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
-        *val = ((state >> 33) as f64 / (1u64 << 31) as f64) - 0.5;
+        let bits = u32::try_from(state >> 33).expect("31-bit value after right shift");
+        *val = f64::from(bits) / denom - 0.5;
     }
     DMatrix::from_row_slice(num_obs, num_assets, &data)
 }
@@ -50,7 +52,7 @@ proptest! {
     ) {
         let returns = synthetic_returns(num_obs, num_assets, seed);
         let result = denoise_from_returns(&returns, DenoiseMethod::Constant);
-        let expected_trace = num_assets as f64;
+        let expected_trace = f64::from(u32::try_from(num_assets).expect("num_assets fits in u32"));
         prop_assert!(
             (result.trace - expected_trace).abs() < 1e-8,
             "Constant: trace={}, expected={}, diff={}",
@@ -67,7 +69,7 @@ proptest! {
     ) {
         let returns = synthetic_returns(num_obs, num_assets, seed);
         let result = denoise_from_returns(&returns, DenoiseMethod::Target);
-        let expected_trace = num_assets as f64;
+        let expected_trace = f64::from(u32::try_from(num_assets).expect("num_assets fits in u32"));
         prop_assert!(
             (result.trace - expected_trace).abs() < 1e-8,
             "Target: trace={}, expected={}, diff={}",

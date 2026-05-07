@@ -185,7 +185,7 @@ mod tests {
         assert_relative_eq!(result.trace(), 3.0, epsilon = 1e-10);
     }
 
-    /// Eigenvectors should be orthonormal: VᵀV ≈ I.
+    /// Eigenvectors should be orthonormal: `VᵀV` ≈ I.
     #[test]
     fn test_orthonormal_eigenvectors() {
         #[rustfmt::skip]

@@ -1,41 +1,53 @@
-[package]
-name = "regit-covariance"
-version = "0.1.2"
+[workspace]
+resolver = "3"
+members = [
+    "crates/regit-covariance",
+    "crates/regit-covariance-yahoo",
+    "crates/regit-covariance-server",
+]
+
+[workspace.package]
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.94"
 authors = ["Nicolas Koenig <nicolas.koenig@regit.io>"]
-description = "Covariance matrix denoising for financial risk validation. Marchenko-Pastur filtering, Ledoit-Wolf shrinkage, detoning."
 license = "Apache-2.0"
 repository = "https://github.com/org-regit-io/regit-covariance"
 homepage = "https://www.regit.io"
-keywords = ["covariance", "marchenko-pastur", "risk", "finance", "denoising"]
-categories = ["mathematics", "science", "finance"]
-readme = "README.md"
 
-[dependencies]
-nalgebra = "0.33"
-reqwest = { version = "0.12", features = ["json"] }
-async-stream = "0.3"
-axum = { version = "0.8", features = ["json"] }
-futures = "0.3"
-tokio = { version = "1", features = ["full"] }
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
+[workspace.dependencies]
+# Pure-math crate (publishable, WASM-compatible).
+regit-covariance = { version = "1.0.0", path = "crates/regit-covariance" }
+regit-covariance-yahoo = { version = "1.0.0", path = "crates/regit-covariance-yahoo" }
+
+# Math + serialization (used across all crates).
+nalgebra = "0.34"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+
+# Async runtime (server + yahoo provider).
+tokio = { version = "1.52.2", features = ["full"] }
+async-stream = "0.3"
+futures = "0.3"
+
+# HTTP (server + yahoo provider).
+axum = { version = "0.8.9", features = ["json"] }
+reqwest = { version = "0.13", features = ["json"] }
+tower-http = { version = "0.6.10", features = ["fs"] }
+
+# Logging.
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-chrono = { version = "0.4", features = ["serde"] }
-tower-http = { version = "0.6.8", features = ["fs"] }
 
-[dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-proptest = "1"
+# Date handling (yahoo provider).
+chrono = { version = "0.4", features = ["serde"] }
+
+# Dev-dependencies.
+criterion = { version = "0.8", features = ["html_reports"] }
+proptest = "1.11.0"
 approx = "0.5"
 tokio-test = "0.4"
-
-[[bench]]
-name = "eigendecompose"
-harness = false
-
-[lints.clippy]
-pedantic = { level = "warn", priority = -1 }

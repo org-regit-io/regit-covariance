@@ -1,16 +1,28 @@
 // Copyright 2026 Regit.io — Nicolas Koenig
 // SPDX-License-Identifier: Apache-2.0
 
-//! Yahoo Finance price provider.
+//! # regit-covariance-yahoo
 //!
-//! Uses the Yahoo Finance v8 chart API to fetch historical adjusted
-//! close prices. Free, rate-limited, suitable for prototyping and
-//! demonstration. Not intended for production use in regulated environments.
+//! Yahoo Finance price + ISIN provider for the `regit-covariance` pipeline.
+//!
+//! Uses the Yahoo Finance v8 chart API to fetch historical adjusted close
+//! prices, plus the search API to resolve ISINs to tickers (with EUR-listing
+//! preference). Free, rate-limited, suitable for prototyping and
+//! demonstration. **Not intended for production use in regulated environments**
+//! — source production market data from a licensed provider (Bloomberg,
+//! Refinitiv, etc.).
+//!
+//! This crate is intentionally separated from the pure-math `regit-covariance`
+//! core so the math crate stays WASM-compatible and dependency-light.
+//!
+//! Part of [Regit OS](https://www.regit.io).
 //!
 //! # Rate limiting
 //!
 //! Fetches tickers sequentially with a configurable delay between requests
 //! to avoid hitting rate limits.
+
+#![forbid(unsafe_code)]
 
 use std::collections::HashMap;
 use std::time::Duration;
