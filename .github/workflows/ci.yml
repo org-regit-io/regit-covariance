@@ -19,23 +19,43 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      # Honour rust-toolchain.toml: installs the pinned channel (1.95.0)
+      # with declared components and targets.
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        run: rustup show
 
       - uses: Swatinem/rust-cache@v2
 
       - name: Format
-        run: cargo fmt --check
+        run: cargo fmt --all --check
 
-      - name: Clippy
-        run: cargo clippy -- -D warnings
+      - name: Clippy (workspace, all targets)
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Test
-        run: cargo test
+      - name: Test (workspace)
+        run: cargo test --workspace
 
-      - name: Doc
-        run: cargo doc --no-deps
+      - name: Doc (workspace)
+        run: cargo doc --workspace --no-deps
 
       - name: Deny
         uses: EmbarkStudios/cargo-deny-action@v2
+
+  wasm:
+    name: WASM build (core only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # rust-toolchain.toml declares targets = ["wasm32-unknown-unknown"];
+      # rustup show installs the pinned toolchain plus that target.
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build regit-covariance for wasm32-unknown-unknown
+        run: cargo build -p regit-covariance --target wasm32-unknown-unknown --release
+
+      - name: Report artefact size
+        run: ls -lh target/wasm32-unknown-unknown/release/ | grep -E '\.(rlib|wasm)' || true

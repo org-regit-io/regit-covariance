@@ -12,7 +12,7 @@ use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::Value;
 
-use crate::data::provider::yahoo;
+use regit_covariance_yahoo as yahoo;
 
 use super::compute::run_pipeline;
 use super::state::{ComputeRequest, SharedState};

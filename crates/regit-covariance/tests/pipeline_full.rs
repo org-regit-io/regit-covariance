@@ -17,16 +17,18 @@ use regit_covariance::math::var;
 fn synthetic_returns(num_obs: usize, num_assets: usize, seed: u64) -> DMatrix<f64> {
     let mut data = vec![0.0_f64; num_obs * num_assets];
     let mut state = seed;
+    let denom = f64::from(1u32 << 31);
     for val in &mut data {
         state = state
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
-        *val = ((state >> 33) as f64 / (1u64 << 31) as f64 - 0.5) * 0.04;
+        let bits = u32::try_from(state >> 33).expect("31-bit value after right shift");
+        *val = (f64::from(bits) / denom - 0.5) * 0.04;
     }
     DMatrix::from_row_slice(num_obs, num_assets, &data)
 }
 
-/// Full pipeline: correlation → eigen → MP → denoise → condition → VaR → SRI.
+/// Full pipeline: correlation → eigen → MP → denoise → condition → `VaR` → SRI.
 #[test]
 fn full_pipeline_synthetic() {
     let (t, n) = (252, 10);
@@ -52,7 +54,8 @@ fn full_pipeline_synthetic() {
 
     // Denoise.
     let denoised = denoise(&eigen, &mp, DenoiseMethod::Target);
-    assert!((denoised.trace - n as f64).abs() < 1e-8);
+    let n_f = f64::from(u32::try_from(n).expect("n fits in u32"));
+    assert!((denoised.trace - n_f).abs() < 1e-8);
 
     // Condition improvement.
     let eigen_d = eigendecompose(&denoised.matrix).unwrap();
@@ -63,7 +66,7 @@ fn full_pipeline_synthetic() {
     );
 
     // VaR.
-    let weights = DVector::from_element(n, 1.0 / n as f64);
+    let weights = DVector::from_element(n, 1.0 / n_f);
     let mu = DVector::zeros(n);
     let mut cov_mat = covariance_from_correlation(&denoised.matrix, &cov.std_devs);
     cov_mat *= 252.0;
@@ -102,7 +105,7 @@ fn condition_improves_various_sizes() {
     }
 }
 
-/// VaR scales with portfolio size (more assets → diversification).
+/// `VaR` scales with portfolio size (more assets → diversification).
 #[test]
 fn diversification_reduces_var() {
     let returns = synthetic_returns(500, 20, 42);

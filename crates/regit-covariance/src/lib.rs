@@ -9,15 +9,24 @@
 //! and detoning for large-dimensional covariance matrices. Built to validate
 //! PRIIPs risk metrics against prescribed regulatory methodology.
 //!
+//! Pure mathematical core: no I/O, no async, no network. Compatible with
+//! `wasm32-unknown-unknown` and `wasm32-wasi` targets. The full pipeline
+//! (returns -> correlation -> denoise -> `VaR` -> SRI) runs synchronously
+//! and deterministically.
+//!
+//! For market-data ingestion (Yahoo Finance) see the companion crate
+//! `regit-covariance-yahoo`. For an HTTP demo server see
+//! `regit-covariance-server`.
+//!
 //! Part of [Regit OS](https://www.regit.io), the operating system for
 //! investment products.
 //!
 //! ## Modules
 //!
-//! - [`data`] — Universe definition, price providers, caching, log returns.
+//! - [`data`] — Log-return computation from price levels.
 //! - [`math`] — Covariance estimation, denoising, shrinkage, risk metrics.
-//! - [`api`] — HTTP API and Server-Sent Events streaming.
 
-pub mod api;
+#![forbid(unsafe_code)]
+
 pub mod data;
 pub mod math;

@@ -219,6 +219,7 @@ fn validate_inputs(
 }
 
 #[cfg(test)]
+#[allow(clippy::similar_names)]
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
@@ -260,7 +261,7 @@ mod tests {
 
     // ── Parametric VaR ──────────────────────────────────────────────
 
-    /// Parametric VaR is positive for zero-mean portfolios.
+    /// Parametric `VaR` is positive for zero-mean portfolios.
     #[test]
     fn test_parametric_var_positive() {
         let (weights, expected_returns, cov) = test_setup();
@@ -268,7 +269,7 @@ mod tests {
         assert!(result.var > 0.0, "VaR should be positive: {}", result.var);
     }
 
-    /// VaR scales with confidence level: higher confidence → higher VaR.
+    /// `VaR` scales with confidence level: higher confidence → higher `VaR`.
     #[test]
     fn test_var_scales_with_confidence() {
         let (weights, expected_returns, cov) = test_setup();
@@ -286,10 +287,10 @@ mod tests {
         assert!(var_975 > var_95);
     }
 
-    /// Known analytical VaR for equal-weight, zero-mean, 2-asset portfolio.
-    /// σ_p = √(0.5² × 0.04 + 0.5² × 0.04 + 2 × 0.5 × 0.5 × 0.01)
+    /// Known analytical `VaR` for equal-weight, zero-mean, 2-asset portfolio.
+    /// `σ_p` = √(0.5² × 0.04 + 0.5² × 0.04 + 2 × 0.5 × 0.5 × 0.01)
     ///      = √(0.01 + 0.01 + 0.005) = √0.025 ≈ 0.15811
-    /// VaR_0.975 = z_0.975 × σ_p ≈ 1.96 × 0.15811 ≈ 0.3099
+    /// `VaR_0.975` = `z_0.975` × `σ_p` ≈ 1.96 × 0.15811 ≈ 0.3099
     #[test]
     fn test_parametric_var_known_value() {
         let (weights, expected_returns, cov) = test_setup();
@@ -323,7 +324,7 @@ mod tests {
 
     // ── Cornish-Fisher VaR ──────────────────────────────────────────
 
-    /// With zero skewness and kurtosis, CF VaR equals parametric VaR.
+    /// With zero skewness and kurtosis, CF `VaR` equals parametric `VaR`.
     #[test]
     fn test_cf_equals_parametric_when_gaussian() {
         let (weights, expected_returns, cov) = test_setup();
@@ -333,7 +334,7 @@ mod tests {
         assert_relative_eq!(param.var, cf.var, epsilon = 1e-10);
     }
 
-    /// Negative skewness (fat left tail) should increase VaR.
+    /// Negative skewness (fat left tail) should increase `VaR`.
     #[test]
     fn test_cf_negative_skewness_increases_var() {
         let (weights, expected_returns, cov) = test_setup();
@@ -350,7 +351,7 @@ mod tests {
         );
     }
 
-    /// Positive excess kurtosis (fat tails) should increase VaR.
+    /// Positive excess kurtosis (fat tails) should increase `VaR`.
     #[test]
     fn test_cf_excess_kurtosis_increases_var() {
         let (weights, expected_returns, cov) = test_setup();

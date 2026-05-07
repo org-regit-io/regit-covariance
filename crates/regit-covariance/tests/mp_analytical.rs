@@ -26,7 +26,7 @@ fn mp_bounds_match_formula() {
     assert_relative_eq!(fit.lambda_minus, expected_minus, epsilon = 1e-10);
 }
 
-/// When all eigenvalues are in the MP bulk (pure noise), signal_count should be 0.
+/// When all eigenvalues are in the MP bulk (pure noise), `signal_count` should be 0.
 #[test]
 fn pure_noise_zero_signals() {
     let n = 20;
@@ -48,7 +48,7 @@ fn single_large_eigenvalue_is_signal() {
     assert!(fit.signal_count >= 1, "large eigenvalue should be signal");
 }
 
-/// λ_plus > λ_minus always.
+/// `λ_plus` > `λ_minus` always.
 #[test]
 fn lambda_plus_exceeds_minus() {
     for q in [2.0, 5.0, 10.0, 50.0] {
@@ -63,17 +63,17 @@ fn lambda_plus_exceeds_minus() {
     }
 }
 
-/// signal_count + noise_count = N.
+/// `signal_count` + `noise_count` = N.
 #[test]
 fn signal_noise_partition_sums_to_n() {
-    let n = 30;
-    let mut vals: Vec<f64> = (1..=n).map(|i| i as f64 * 0.1).collect();
+    let n: u32 = 30;
+    let mut vals: Vec<f64> = (1..=n).map(|i| f64::from(i) * 0.1).collect();
     vals.sort_by(|a, b| b.partial_cmp(a).unwrap());
     let eigenvalues = DVector::from_vec(vals);
 
     let fit = fit_sigma_sq(&eigenvalues, 5.0).unwrap();
     assert_eq!(
-        fit.signal_count + fit.noise_count,
+        u32::try_from(fit.signal_count + fit.noise_count).expect("counts fit in u32"),
         n,
         "partition must sum to N"
     );

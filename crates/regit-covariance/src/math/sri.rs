@@ -238,7 +238,7 @@ mod tests {
 
     // ── VaR-equivalent volatility ───────────────────────────────────
 
-    /// VEV = VaR / z_alpha.
+    /// VEV = `VaR` / `z_alpha`.
     #[test]
     fn test_vev_computation() {
         let vev = var_equivalent_volatility(0.3099, 1.96);

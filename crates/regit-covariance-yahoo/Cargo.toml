@@ -1,0 +1,25 @@
+[package]
+name = "regit-covariance-yahoo"
+description = "Yahoo Finance price + ISIN provider for the regit-covariance pipeline."
+keywords = ["yahoo-finance", "covariance", "finance", "isin", "regit"]
+categories = ["finance", "api-bindings"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+nalgebra = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }

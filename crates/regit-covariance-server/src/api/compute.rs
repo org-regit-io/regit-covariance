@@ -9,15 +9,15 @@
 
 use nalgebra::{DMatrix, DVector};
 
-use crate::data::provider::yahoo;
-use crate::data::returns::log_returns;
-use crate::math::condition;
-use crate::math::denoise::{DenoiseMethod, denoise, renormalize_to_correlation};
-use crate::math::eigen::eigendecompose;
-use crate::math::marchenko_pastur::fit_sigma_sq;
-use crate::math::sample_covariance::{correlation_matrix, covariance_from_correlation};
-use crate::math::sri::{self, DivergenceFlag};
-use crate::math::var;
+use regit_covariance::data::returns::log_returns;
+use regit_covariance::math::condition;
+use regit_covariance::math::denoise::{DenoiseMethod, denoise, renormalize_to_correlation};
+use regit_covariance::math::eigen::eigendecompose;
+use regit_covariance::math::marchenko_pastur::fit_sigma_sq;
+use regit_covariance::math::sample_covariance::{correlation_matrix, covariance_from_correlation};
+use regit_covariance::math::sri::{self, DivergenceFlag};
+use regit_covariance::math::var;
+use regit_covariance_yahoo as yahoo;
 
 use super::state::{
     ComputationResult, ComputeRequest, ConditionResponse, MpFitResponse, RiskMetricsResponse,
@@ -344,7 +344,7 @@ pub async fn run_pipeline(
         .map(|i| {
             let asset_vol = cov_denoised[(i, i)].sqrt();
             let asset_vev = sri::var_equivalent_volatility(z_975 * asset_vol, z_975);
-            let asset_mrm = sri::classify_mrm(asset_vev).map(|r| r.mrm).unwrap_or(0);
+            let asset_mrm = sri::classify_mrm(asset_vev).map_or(0, |r| r.mrm);
             serde_json::json!({
                 "ticker": tickers[i],
                 "volatility": asset_vol,
