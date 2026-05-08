@@ -56,13 +56,19 @@ jobs:
 
       # Publish in dependency order: core first (no internal deps),
       # then the yahoo provider which depends on the workspace.
-      # Use --dry-run for workflow_dispatch with dry_run=true.
+      # Context values are passed via env (not ${{ }} interpolation in shell)
+      # to avoid template-injection. cargo reads CARGO_REGISTRY_TOKEN from
+      # env automatically, so --token is not needed and the secret never
+      # appears on the command line.
       - name: Publish regit-covariance (core)
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "$DRY_RUN" = "true" ]; then
             cargo publish --dry-run -p regit-covariance --allow-dirty
           else
-            cargo publish -p regit-covariance --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+            cargo publish -p regit-covariance
           fi
 
       - name: Wait for crates.io to index core
@@ -70,11 +76,14 @@ jobs:
         run: sleep 30
 
       - name: Publish regit-covariance-yahoo
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "$DRY_RUN" = "true" ]; then
             cargo publish --dry-run -p regit-covariance-yahoo --allow-dirty
           else
-            cargo publish -p regit-covariance-yahoo --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+            cargo publish -p regit-covariance-yahoo
           fi
 
       # The server crate has `publish = false` and is intentionally not
