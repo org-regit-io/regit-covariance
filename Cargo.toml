@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 rust-version = "1.94"
 authors = ["Nicolas Koenig <nicolas.koenig@regit.io>"]
@@ -20,8 +20,8 @@ pedantic = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
 # Pure-math crate (publishable, WASM-compatible).
-regit-covariance = { version = "1.0.0", path = "crates/regit-covariance" }
-regit-covariance-yahoo = { version = "1.0.0", path = "crates/regit-covariance-yahoo" }
+regit-covariance = { version = "1.0.1", path = "crates/regit-covariance" }
+regit-covariance-yahoo = { version = "1.0.1", path = "crates/regit-covariance-yahoo" }
 
 # Math + serialization (used across all crates).
 nalgebra = "0.34"
