@@ -17,7 +17,7 @@ jobs:
     name: Quality Gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Honour rust-toolchain.toml: installs the pinned channel (1.95.0)
       # with declared components and targets.
@@ -45,7 +45,7 @@ jobs:
     name: WASM build (core only)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # rust-toolchain.toml declares targets = ["wasm32-unknown-unknown"];
       # rustup show installs the pinned toolchain plus that target.
