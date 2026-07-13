@@ -8,6 +8,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] — 2026-07-14
+
+### Changed (breaking)
+
+- Updated `nalgebra` from 0.34 to 0.35. This is a breaking change and the
+  reason for the major version bump: `nalgebra` types (`DMatrix<f64>`,
+  `DVector<f64>`) appear directly in the public API of `regit-covariance`
+  (for example `correlation_matrix`, `eigendecompose`, `covariance_from_correlation`,
+  `log_returns`, and `MarchenkoPastur` fitting). A downstream crate that passes
+  these types in or out must move to `nalgebra` 0.35 in step with this release,
+  since values built against 0.34 are a distinct, incompatible type. Because an
+  incompatible bump of a publicly exposed dependency is part of this crate's own
+  semver surface, it is released as 2.0.0 rather than a minor or patch, even
+  though no regit-covariance code or behaviour changed.
+- Updated `tower-http` to 0.7 in the internal demo server
+  (`regit-covariance-server`), which is not published to crates.io.
+
+### Unchanged
+
+- No behavioural or numerical changes to the covariance, denoising, shrinkage,
+  detoning, or eigendecomposition routines. The full test suite passes
+  unchanged against nalgebra 0.35.
+
 ## [1.0.1] — 2026-07-13
 
 ### Changed
