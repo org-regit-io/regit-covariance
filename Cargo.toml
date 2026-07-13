@@ -24,7 +24,7 @@ regit-covariance = { version = "1.0.1", path = "crates/regit-covariance" }
 regit-covariance-yahoo = { version = "1.0.1", path = "crates/regit-covariance-yahoo" }
 
 # Math + serialization (used across all crates).
-nalgebra = "0.34"
+nalgebra = "0.35"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
