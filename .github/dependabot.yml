@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Keep GitHub Actions pinned in the workflows current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Dev and build dependencies (the crate carries no runtime deps by design).
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      cargo:
+        update-types: ["minor", "patch"]

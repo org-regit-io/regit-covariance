@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-07-13
+
+### Changed
+
+- Refreshed dependencies: `Cargo.lock` updated to the latest semver-compatible
+  patch and minor versions.
+- Bumped the workspace version to 1.0.1.
+- No public API changes.
+
 ## [1.0.0] — 2026-05-07
 
 First stable release. Public API frozen under semver guarantees.
